@@ -1,4 +1,4 @@
-# Spatial Dynamics of Domestic Tourism in Indonesia 🇮🇩
+# Spatial Dynamics of Domestic Tourism in Indonesia 
 
 This repository contains the end-to-end data processing, spatial modeling, and visualization scripts for an integrative spatial study on the determinants of domestic tourism across 34 provinces in Indonesia.
 
