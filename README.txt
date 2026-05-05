@@ -1,8 +1,28 @@
+# Spatial Dynamics of Domestic Tourism in Indonesia 🇮🇩
+
+This repository contains the end-to-end data processing, spatial modeling, and visualization scripts for an integrative spatial study on the determinants of domestic tourism across 34 provinces in Indonesia.
+
+## Project Overview
+The study investigates the relationship between domestic tourist numbers, air transportation accessibility (domestic arrivals/departures), and industrial expenditure (micro and small scales). To capture spatial heterogeneity and spillover effects across regions, multiple spatial statistical models were implemented and evaluated.
+
+**Key Finding:** Standard Geographically Weighted Regression (GWR) performed best overall, capturing 97.13% of the variance in tourist numbers. This highlights the strong local impacts of economic and mobility factors, particularly in high-traffic areas like Java and Bali.
+
 ## Repository Structure
 
-* **`data/`**: Berisi dataset utama (`datasetuas2(2).csv`) yang mencakup metrik pariwisata, mobilitas, dan pengeluaran per provinsi.
+* **`data/`**: Contains the main dataset (`datasetuas2(2).csv`) covering tourism, mobility, and expenditure metrics per province.
 * **`scripts/`**: 
-    * `01_eda_preprocessing.R`: Script untuk pra-pemrosesan data, deteksi outlier, analisis korelasi, dan Exploratory Data Analysis (EDA).
+    * `01_eda_preprocessing.R`: Script for data cleaning, outlier detection, correlation analysis, and Exploratory Data Analysis (EDA).
 * **`notebooks/`**: 
-    * `spatial_modeling.Rmd`: R Markdown utama (All-in-One) yang berisi eksekusi keseluruhan pemodelan regresi spasial (GWR, GWLR, GWPR, MGWR, GWNBR) beserta visualisasi koefisien lokal menggunakan `sf` dan `tmap`.
-* **`output/`**: File diagnostik hasil run software GWR4 (`test_summary.txt`, `test.ctl`).
+    * `spatial_modeling.Rmd`: The primary R Markdown notebook containing the execution of all spatial regression models (GWR, GWLR, GWPR, MGWR, GWNBR) and interactive spatial mapping using `sf` and `tmap`.
+* **`report/`**: The final scientific article documenting the methodology and full findings (`SDA1 - Kelompok 5 - Artikel Ilmiah.pdf`).
+
+## 🛠️ Tech Stack & Packages
+* **Language:** R
+* **Spatial Modeling:** `GWmodel`, `sp`, `MASS`
+* **Geospatial Processing & Visualization:** `sf`, `tmap`, `ggplot2`
+* **Data Manipulation & EDA:** `dplyr`, `tidyverse`, `DataExplorer`, `corrplot`
+
+## 🚀 How to Run
+1. Clone this repository to your local machine:
+   ```bash
+   git clone [https://github.com/indrayana-creator/Spatial-Tourism-Analysis.git](https://github.com/indrayana-creator/Spatial-Tourism-Analysis.git)
