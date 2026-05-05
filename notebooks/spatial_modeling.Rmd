@@ -1,0 +1,703 @@
+---
+title: "PENGOLAHAN DATA"
+author: "Indrayana Widhikartiko"
+date: "2025-06-21"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+
+# GWR
+
+```{r}
+# Load library
+library(GWmodel)
+library(sp)
+library(sf)
+library(readr)
+
+# Load data
+data <- read_csv("C:/Users/User/Downloads/datasetuas2(2).csv")
+head(data)
+
+# Konversi ke objek spasial
+coordinates(data) <- ~Longitude+Latitude
+proj4string(data) <- CRS("+proj=longlat +datum=WGS84")
+
+bw.gwr <- bw.gwr(
+  formula = Total_Wis ~ Pengeluaran_Mikro + Pengeluaran_Kecil + Dom_Datang + Dom_Berangkat,
+  data = data,
+  approach = "AICc",          
+  kernel = "gaussian",      
+  adaptive = FALSE            
+)
+
+gwr.model <- gwr.basic(
+  formula = Total_Wis ~ Pengeluaran_Mikro + Pengeluaran_Kecil + Dom_Datang + Dom_Berangkat,
+  data = data,
+  bw = bw.gwr,
+  kernel = "gaussian",
+  adaptive = FALSE
+)
+
+print(gwr.model)
+summary(gwr.model)
+```
+
+# VISUALIASI GWR
+
+```{r}
+library(sf)
+
+# Ambil hasil koefisien dan koordinat dari gwr.model
+gwr_df <- as.data.frame(gwr.model$SDF)
+gwr_df$Longitude <- coordinates(gwr.model$SDF)[, 1]
+gwr_df$Latitude <- coordinates(gwr.model$SDF)[, 2]
+
+# Ubah jadi sf
+gwr_sf <- st_as_sf(gwr_df, coords = c("Longitude", "Latitude"), crs = 4326)
+
+```
+
+```{r}
+shp <- st_read("C:/Users/User/Desktop/KULIAH/SEMESTER 4/SPASIAL/indonesia/IDN.shp")  # atau path sesuai
+```
+
+-   Visualisasi Dom_Datang
+
+```{r}
+library(tmap)
+tmap_mode("plot")
+
+tm_shape(shp) +
+  tm_borders(col = "gray70") +
+tm_shape(gwr_sf) +
+  tm_dots(
+    col = "Dom_Datang",
+    palette = "YlGnBu",
+    style = "quantile",
+    size = 0.25,
+    title = "Koef. Dom_Datang"
+  ) +
+  tm_layout(title = "Koefisien Lokal GWR: Dom_Datang", legend.outside = TRUE)
+```
+
+-   Visualisasi Pengeluaran_Mikro
+
+```{r}
+tm_shape(shp) +
+  tm_borders(col = "gray70") +
+tm_shape(gwr_sf) +
+  tm_dots(
+    col = "Pengeluaran_Mikro",
+    palette = "YlOrRd",
+    style = "quantile",
+    size = 0.25,
+    title = "Koef. Pengeluaran Mikro"
+  ) +
+  tm_layout(title = "Koefisien Lokal GWR: Pengeluaran Mikro", legend.outside = TRUE)
+```
+
+-   Visualisasi Dom_Berangkat
+
+```{r}
+tm_shape(shp) +
+  tm_borders(col = "gray70") +
+tm_shape(gwr_sf) +
+  tm_dots(
+    col = "Dom_Berangkat",
+    palette = "PuBu",
+    style = "quantile",
+    size = 0.25,
+    title = "Koef. Dom_Berangkat"
+  ) +
+  tm_layout(title = "Koefisien Lokal GWR: Dom_Berangkat", legend.outside = TRUE)
+```
+
+-   Visualisasi Pengeluaran_Kecil
+
+```{r}
+tm_shape(shp) +
+  tm_borders(col = "gray70") +
+tm_shape(gwr_sf) +
+  tm_dots(
+    col = "Pengeluaran_Kecil",
+    palette = "Oranges",
+    style = "quantile",
+    size = 0.25,
+    title = "Koef. Pengeluaran Kecil"
+  ) +
+  tm_layout(title = "Koefisien Lokal GWR: Pengeluaran Kecil", legend.outside = TRUE)
+```
+
+# GWLR
+
+```{r}
+# ================================
+# 1. Install & Load Package
+# ================================
+library(GWmodel)
+library(sp)
+
+# ================================
+# 2. Load Data
+# ================================
+data <- read.csv("C:/Users/User/Downloads/datasetuas2(2).csv")
+
+# ================================
+# 3. Buat SpatialPointsDataFrame
+# ================================
+coordinates(data) <- ~Longitude + Latitude
+proj4string(data) <- CRS("+proj=longlat +datum=WGS84")
+
+data@data$Total_Penumpang <- data@data$Dom_Datang + data@data$Dom_Berangkat
+data@data$Total_Pengeluaran <- data@data$Pengeluaran_Mikro + data@data$Pengeluaran_Kecil
+
+# ================================
+# 4. Hitung Bandwidth GWLR
+# ================================
+bw_gwlr <- bw.gwr(
+  Total_Wis ~ Total_Penumpang + Total_Pengeluaran,
+  data = data,
+  approach = "AICc",
+  kernel = "bisquare",
+  adaptive = TRUE
+)
+
+# ================================
+# 5. Jalankan GWLR
+# ================================
+gwlr_model <- gwr.basic(
+  Total_Wis ~ Total_Penumpang + Total_Pengeluaran,
+  data = data,
+  bw = bw_gwlr,
+  kernel = "bisquare",
+  adaptive = TRUE
+)
+
+# ================================
+# 6. Lihat Hasil
+# ================================
+print(gwlr_model)
+
+
+cor(data@data[, c("Dom_Datang", "Dom_Berangkat", "Pengeluaran_Mikro", "Pengeluaran_Kecil")])
+
+
+```
+
+# VISUALISASI GWLR
+
+```{r}
+library(tmap)
+library(sf)
+
+shp <- st_read("C:/Users/User/Desktop/KULIAH/SEMESTER 4/SPASIAL/indonesia/IDN.shp")
+```
+
+```{r}
+library(GWmodel)
+library(sp)
+
+# Ambil koordinat dari objek SpatialPointsDataFrame
+coords <- coordinates(data)
+
+# Gabungkan koordinat ke hasil model
+gwr_result <- as.data.frame(gwlr_model$SDF)
+gwr_result$lon <- coords[, 1]
+gwr_result$lat <- coords[, 2]
+
+# Konversi ke objek sf
+gwr_sf <- st_as_sf(gwr_result, coords = c("lon", "lat"), crs = 4326)
+
+```
+
+```{r}
+tmap_mode("plot")  # atau "plot" untuk statis
+
+tm_shape(shp) +
+  tm_borders(col = "gray60") +
+tm_shape(gwr_sf) +
+  tm_dots(
+    col = "Total_Pengeluaran",
+    palette = "YlOrRd",
+    style = "quantile",
+    size = 0.2,
+    title = "Koef. Pengeluaran"
+  ) +
+  tm_layout(
+    title = "Koefisien GWR - Total Pengeluaran terhadap Wisatawan",
+    legend.outside = TRUE
+  )
+
+```
+
+# GWPR
+
+```{r}
+library(GWmodel)
+library(sp)
+
+data <- read.csv("C:/Users/User/Downloads/datasetuas2(2).csv")
+data$Total_Pengeluaran <- data$Pengeluaran_Mikro + data$Pengeluaran_Kecil
+data$Total_Pengunjung <- data$Dom_Datang + data$Dom_Berangkat
+
+coordinates(data) <- ~Longitude + Latitude
+proj4string(data) <- CRS("+proj=longlat +datum=WGS84")
+
+# --- Buat distance matrix ---
+dMat <- gw.dist(dp.locat = coordinates(data))
+
+# --- Bandwidth GWPR ---
+bw_gwpr <- bw.ggwr(
+  Total_Wis ~ Total_Pengeluaran + Total_Pengunjung,
+  data = data,
+  family = "poisson",
+  dMat = dMat,
+  approach = "AICc",
+  kernel = "bisquare",
+  adaptive = TRUE
+)
+
+# --- Fit model GWPR ---
+gwpr_model <- ggwr.basic(
+  Total_Wis ~ Total_Pengeluaran + Total_Pengunjung,
+  data = data,
+  bw = bw_gwpr,
+  family = "poisson",
+  dMat = dMat,
+  kernel = "bisquare",
+  adaptive = TRUE
+)
+
+summary(gwpr_model)
+
+# Tampilkan isi SpatialPointsDataFrame hasil GWPR
+head(gwpr_model$SDF@data)
+
+```
+
+# VISUALISASI GWPR
+
+```{r}
+# Ambil koordinat dari data spasial awal
+coords <- coordinates(data)
+
+# Ambil hasil model
+gwpr_result <- as.data.frame(gwpr_model$SDF)
+gwpr_result$lon <- coords[, 1]
+gwpr_result$lat <- coords[, 2]
+
+# Konversi ke sf object
+library(sf)
+gwpr_sf <- st_as_sf(gwpr_result, coords = c("lon", "lat"), crs = 4326)
+```
+
+```{r}
+shp <- st_read("C:/Users/User/Desktop/KULIAH/SEMESTER 4/SPASIAL/indonesia/IDN.shp")  # sesuaikan path
+```
+
+-   Visualiasi Total_Pengunjung
+
+```{r}
+library(tmap)
+tmap_mode("plot")
+
+tm_shape(shp) +
+  tm_borders(col = "gray60") +
+tm_shape(gwpr_sf) +
+  tm_dots(
+    col = "Total_Pengunjung",
+    palette = "YlOrRd",
+    style = "quantile",
+    size = 0.25,
+    title = "Koef. Pengunjung"
+  ) +
+  tm_layout(
+    title = "Koefisien GWPR - Total Pengunjung terhadap Wisatawan",
+    legend.outside = TRUE
+  )
+
+```
+
+-   Visualisasi Total_Pengeluaran
+
+```{r}
+tm_shape(shp) +
+  tm_borders(col = "gray60") +
+tm_shape(gwpr_sf) +
+  tm_dots(
+    col = "Total_Pengeluaran",
+    palette = "Blues",
+    style = "quantile",
+    size = 0.25,
+    title = "Koef. Pengeluaran"
+  ) +
+  tm_layout(
+    title = "Koefisien GWPR - Total Pengeluaran terhadap Wisatawan",
+    legend.outside = TRUE
+  )
+
+```
+
+-   Visualisasi Local_R\^2 (model fit per lokasi)
+
+```{r}
+# Ambil data hasil model GWPR
+gwpr_df <- as.data.frame(gwpr_model$SDF)
+
+# Hitung Local R² = 1 - (residual² / (y - mean(y))²)
+y_actual <- gwpr_df$y
+y_hat <- gwpr_df$yhat
+residual <- gwpr_df$residual
+mean_y <- mean(y_actual)
+
+# Hitung local R² manual
+gwpr_df$Local_R2 <- 1 - ((residual^2) / ((y_actual - mean_y)^2))
+```
+
+```{r}
+# Ambil koordinat dari data spasial asli
+coords <- coordinates(data)
+gwpr_df$lon <- coords[, 1]
+gwpr_df$lat <- coords[, 2]
+
+# Konversi ke sf
+library(sf)
+gwpr_sf <- st_as_sf(gwpr_df, coords = c("lon", "lat"), crs = 4326)
+
+```
+
+```{r}
+library(tmap)
+tmap_mode("plot")
+
+tm_shape(shp) +
+  tm_borders(col = "gray60") +
+tm_shape(gwpr_sf) +
+  tm_dots(
+    col = "Local_R2",
+    palette = "Greens",
+    style = "quantile",
+    size = 0.25,
+    title = "Local R²"
+  ) +
+  tm_layout(
+    title = "R² Lokal Model GWPR",
+    legend.outside = TRUE
+  )
+
+```
+
+# MGWR
+
+```{r}
+library(GWmodel)
+library(sp)
+library(car)
+library(corrplot)
+
+# === Load Data ===
+data <- read.csv("C:/Users/User/Downloads/datasetuas2(2).csv")
+
+# Tambahkan variabel gabungan
+data$Total_Pengunjung <- data$Dom_Datang + data$Dom_Berangkat
+data$Total_Pengeluaran <- data$Pengeluaran_Mikro + data$Pengeluaran_Kecil
+
+# Buat koordinat spasial dari kolom longitude dan latitude
+coordinates(data) <- ~Longitude + Latitude
+proj4string(data) <- CRS("+proj=longlat +datum=WGS84")
+
+# Korelasi dan VIF
+data_num <- data@data[, c("Total_Wis", "Total_Pengunjung", "Total_Pengeluaran")]
+corrplot(cor(data_num), method = "color")
+vif(lm(Total_Wis ~ Total_Pengunjung + Total_Pengeluaran, data = data))
+
+# ===============================
+# GWR untuk Total_Pengunjung
+bw_pg <- bw.gwr(Total_Wis ~ Total_Pengunjung,
+                data = data,
+                approach = "AICc",
+                kernel = "bisquare",
+                adaptive = TRUE)
+
+gwr_pg <- gwr.basic(Total_Wis ~ Total_Pengunjung,
+                    data = data,
+                    bw = bw_pg,
+                    kernel = "bisquare",
+                    adaptive = TRUE)
+
+# ===============================
+# GWR untuk Total_Pengeluaran
+bw_pe <- bw.gwr(Total_Wis ~ Total_Pengeluaran,
+                data = data,
+                approach = "AICc",
+                kernel = "bisquare",
+                adaptive = TRUE)
+
+gwr_pe <- gwr.basic(Total_Wis ~ Total_Pengeluaran,
+                    data = data,
+                    bw = bw_pe,
+                    kernel = "bisquare",
+                    adaptive = TRUE)
+
+# Tampilkan bandwidth
+bw_pg; bw_pe
+
+# Ringkasan Koefisien Lokal
+summary(gwr_pg$SDF@data$Total_Pengunjung)
+summary(gwr_pe$SDF@data$Total_Pengeluaran)
+
+head(gwr_pg$SDF@data)
+head(gwr_pe$SDF@data)
+
+print(gwr_pg)
+print(gwr_pe)
+
+```
+
+# VISUALISASI MGWR
+
+```{r}
+library(sf)
+
+# Ambil koordinat
+coords <- coordinates(data)
+
+# === Koefisien GWR Total_Pengunjung ===
+gwr_pg_df <- as.data.frame(gwr_pg$SDF)
+gwr_pg_df$lon <- coords[, 1]
+gwr_pg_df$lat <- coords[, 2]
+gwr_pg_sf <- st_as_sf(gwr_pg_df, coords = c("lon", "lat"), crs = 4326)
+
+# === Koefisien GWR Total_Pengeluaran ===
+gwr_pe_df <- as.data.frame(gwr_pe$SDF)
+gwr_pe_df$lon <- coords[, 1]
+gwr_pe_df$lat <- coords[, 2]
+gwr_pe_sf <- st_as_sf(gwr_pe_df, coords = c("lon", "lat"), crs = 4326)
+```
+
+```{r}
+shp <- st_read("C:/Users/User/Desktop/KULIAH/SEMESTER 4/SPASIAL/indonesia/IDN.shp")
+```
+
+-   Visualisasi Total_Pengunjung
+
+```{r}
+library(tmap)
+tmap_mode("plot")
+
+tm_shape(shp) +
+  tm_borders(col = "gray60") +
+tm_shape(gwr_pg_sf) +
+  tm_dots(
+    col = "Total_Pengunjung",
+    palette = "YlGnBu",
+    style = "quantile",
+    size = 0.25,
+    title = "Koef. Pengunjung"
+  ) +
+  tm_layout(
+    title = "Koefisien Lokal GWR: Total_Pengunjung",
+    legend.outside = TRUE
+  )
+```
+
+-   Visualisasi Total_Pengeluaran
+
+```{r}
+tm_shape(shp) +
+  tm_borders(col = "gray60") +
+tm_shape(gwr_pe_sf) +
+  tm_dots(
+    col = "Total_Pengeluaran",
+    palette = "YlOrRd",
+    style = "quantile",
+    size = 0.25,
+    title = "Koef. Pengeluaran"
+  ) +
+  tm_layout(
+    title = "Koefisien Lokal GWR: Total_Pengeluaran",
+    legend.outside = TRUE
+  )
+
+```
+
+# GWNBR
+
+```{r}
+library(dplyr)
+library(sp)
+library(GWmodel)
+library(MASS)
+library(geosphere)
+library(ggplot2)
+library(sf) 
+
+PATH_CSV <- "C:/Users/User/Downloads/datasetuas2(2).csv"
+
+tabel_data <- read.csv(PATH_CSV, stringsAsFactors = FALSE) %>%
+  dplyr::mutate(
+    Jumlah_Pengunjung = Dom_Datang + Dom_Berangkat,
+    Jumlah_Pengeluaran = Pengeluaran_Mikro + Pengeluaran_Kecil,
+    Provinsi_Bersih   = toupper(trimws(Provinsi))
+  ) %>%
+  dplyr::filter(!is.na(Latitude), !is.na(Longitude), !is.na(Total_Wis))
+
+peta_sp <- SpatialPointsDataFrame(
+  coords = tabel_data[, c("Longitude", "Latitude")],
+  data   = tabel_data,
+  proj4string = CRS("+proj=longlat +datum=WGS84")
+)
+
+# MODEL GLOBAL NEGATIF BINOMIAL 
+model_global_nb <- glm.nb(Total_Wis ~ Jumlah_Pengunjung + Jumlah_Pengeluaran,
+                          data = peta_sp@data)
+estimasi_theta <- model_global_nb$theta
+n_global <- nobs(model_global_nb)
+k_global <- length(coef(model_global_nb)) + 1
+AIC_global  <- AIC(model_global_nb)
+AICc_global <- AIC_global + (2 * k_global * (k_global + 1)) / (n_global - k_global - 1)
+cat("--- Ringkasan Model Global (GLM) ---\n")
+print(summary(model_global_nb))
+cat("\n")
+
+
+# REGRESI NEGATIF BINOMIAL TERBOBOTI GEOGRAFIS (GWNBR)
+matriks_koordinat <- coordinates(peta_sp)
+matriks_jarak     <- gw.dist(dp.locat = matriks_koordinat, longlat = TRUE)
+lebar_pita_gwnbr <- bw.ggwr(
+  Total_Wis ~ Jumlah_Pengunjung + Jumlah_Pengeluaran,
+  data     = peta_sp,
+  family   = "poisson",
+  dMat     = matriks_jarak,
+  approach = "AICc",
+  adaptive = TRUE,
+  kernel   = "bisquare"
+)
+matriks_pembobot <- gw.weight(matriks_jarak,
+                              bw       = lebar_pita_gwnbr,
+                              kernel   = "bisquare",
+                              adaptive = TRUE)
+jumlah_lokasi    <- nrow(peta_sp)
+jumlah_parameter <- 3
+matriks_koefisien <- matrix(NA, nrow = jumlah_lokasi, ncol = jumlah_parameter + 2,
+                            dimnames = list(peta_sp$Provinsi_Bersih,
+                                            c("Intercept", "b_Pengunjung", "b_Pengeluaran", "AIC", "AICc")))
+vektor_gagal      <- logical(jumlah_lokasi)
+cat("Menjalankan", jumlah_lokasi, "regresi Negatif Binomial lokal...\n")
+bilah_progress <- txtProgressBar(max = jumlah_lokasi, style = 3)
+for (i in seq_len(jumlah_lokasi)) {
+  bobot_i <- matriks_pembobot[i, ]
+  model_lokal_i <- try(glm.nb(
+    Total_Wis ~ Jumlah_Pengunjung + Jumlah_Pengeluaran,
+    data     = peta_sp@data,
+    weights  = bobot_i,
+    init.theta = estimasi_theta,
+    control  = glm.control(maxit = 100)),
+    silent = TRUE
+  )
+  if (inherits(model_lokal_i, "try-error")) {
+    vektor_gagal[i] <- TRUE
+  } else {
+    matriks_koefisien[i, 1:jumlah_parameter] <- coef(model_lokal_i)
+    k_i <- length(coef(model_lokal_i)) + 1
+    n_i <- sum(bobot_i > 0)
+    aic_lokal <- AIC(model_lokal_i)
+    aicc_lokal <- aic_lokal + (2 * k_i * (k_i + 1)) / (n_i - k_i - 1)
+    matriks_koefisien[i, "AIC"]  <- aic_lokal
+    matriks_koefisien[i, "AICc"] <- aicc_lokal
+  }
+  setTxtProgressBar(bilah_progress, i)
+}
+close(bilah_progress)
+cat("\nJumlah lokasi yang gagal konvergen:", sum(vektor_gagal), "\n\n")
+
+# 4) ANALISIS & RINGKASAN HASIL
+koefisien_lokal_df <- as.data.frame(matriks_koefisien) %>%
+  tibble::rownames_to_column("Provinsi_Bersih") %>%
+  dplyr::filter(!is.na(Intercept))
+
+cat("--- Ringkasan Statistik Koefisien Lokal ---\n")
+print(summary(koefisien_lokal_df[, c("b_Pengunjung", "b_Pengeluaran")]))
+cat("\n")
+
+summary(matriks_koefisien)
+View(koefisien_lokal_df)
+
+
+```
+
+# VISUALISASI GWNBR
+
+```{r}
+library(sf)
+library(tmap)
+
+shp <- st_read("C:/Users/User/Desktop/KULIAH/SEMESTER 4/SPASIAL/indonesia/IDN.shp")  # sesuaikan path
+
+```
+
+```{r}
+# Tambahkan koordinat Longitude dan Latitude dari tabel_data
+koefisien_lokal_df <- koefisien_lokal_df %>%
+  left_join(
+    dplyr::select(tabel_data, Provinsi_Bersih, Longitude, Latitude),
+    by = "Provinsi_Bersih"
+  ) %>%
+  dplyr::distinct(Provinsi_Bersih, .keep_all = TRUE)
+
+
+```
+
+```{r}
+# Pastikan kolom koordinat sudah ada
+head(koefisien_lokal_df[, c("Provinsi_Bersih", "Longitude", "Latitude")])
+
+# Ubah ke objek spasial sf
+gwnbr_sf <- st_as_sf(koefisien_lokal_df, coords = c("Longitude", "Latitude"), crs = 4326)
+
+```
+
+-   Visualisasi b_Pengunjung
+
+```{r}
+tmap_mode("plot")
+
+tm_shape(shp) +
+  tm_borders(col = "gray60") +
+tm_shape(gwnbr_sf) +
+  tm_dots(
+    col = "b_Pengunjung",
+    palette = "Blues",
+    style = "quantile",
+    size = 0.25,
+    title = "Koef. Pengunjung"
+  ) +
+  tm_layout(
+    title = "Koefisien Lokal GWNBR: Jumlah Pengunjung",
+    legend.outside = TRUE
+  )
+
+```
+
+-   Visualisasi b_Pengeluaran
+
+```{r}
+tm_shape(shp) +
+  tm_borders(col = "gray60") +
+tm_shape(gwnbr_sf) +
+  tm_dots(
+    col = "b_Pengeluaran",
+    palette = "YlOrRd",
+    style = "quantile",
+    size = 0.25,
+    title = "Koef. Pengeluaran"
+  ) +
+  tm_layout(
+    title = "Koefisien Lokal GWNBR: Jumlah Pengeluaran",
+    legend.outside = TRUE
+  )
+
+```
